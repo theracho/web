@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Product, Transaction } from './types';
 import { MovementType } from './types';
@@ -7,32 +6,34 @@ import TransactionForm from './components/TransactionForm';
 import InventoryTable from './components/InventoryTable';
 import HistoryTable from './components/HistoryTable';
 
-const App: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [history, setHistory] = useState<Transaction[]>([]);
-  const [error, setError] = useState<string | null>(null);
+// Helper function to safely load state from LocalStorage
+const loadStateFromStorage = () => {
+  try {
+    const storedProducts = localStorage.getItem('inventory_products');
+    const storedHistory = localStorage.getItem('inventory_history');
 
-  // Load state from LocalStorage on initial render
-  useEffect(() => {
-    try {
-      const storedProducts = localStorage.getItem('inventory_products');
-      const storedHistory = localStorage.getItem('inventory_history');
+    const products = storedProducts ? JSON.parse(storedProducts) : INITIAL_PRODUCTS;
+    const history = storedHistory ? JSON.parse(storedHistory) : [];
 
-      if (storedProducts) {
-        setProducts(JSON.parse(storedProducts));
-      } else {
-        setProducts(INITIAL_PRODUCTS);
-      }
-
-      if (storedHistory) {
-        setHistory(JSON.parse(storedHistory));
-      }
-    } catch (e) {
-      console.error("Failed to parse from localStorage", e);
-      setProducts(INITIAL_PRODUCTS);
-      setHistory([]);
+    // Quick validation to prevent app crash if stored data is malformed
+    if (!Array.isArray(products) || !Array.isArray(history)) {
+        return { products: INITIAL_PRODUCTS, history: [] };
     }
-  }, []);
+    return { products, history };
+
+  } catch (e) {
+    console.error("Failed to load or parse from localStorage", e);
+    // Fallback to initial state if there's an error
+    return { products: INITIAL_PRODUCTS, history: [] };
+  }
+};
+
+
+const App: React.FC = () => {
+  // Initialize state directly and synchronously from localStorage for a stable first render
+  const [products, setProducts] = useState<Product[]>(() => loadStateFromStorage().products);
+  const [history, setHistory] = useState<Transaction[]>(() => loadStateFromStorage().history);
+  const [error, setError] = useState<string | null>(null);
 
   // Save state to LocalStorage whenever products or history change
   useEffect(() => {
@@ -104,14 +105,13 @@ const App: React.FC = () => {
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    if (link.href) {
-      URL.revokeObjectURL(link.href);
-    }
+    
     link.href = URL.createObjectURL(blob);
     link.download = "reporte_de_movimientos.csv";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
   };
 
   return (
@@ -132,8 +132,9 @@ const App: React.FC = () => {
               onClick={downloadCSV}
               className="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-300 ease-in-out flex items-center gap-2"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 9.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 7.414V13a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L10 10.586l2.293-2.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v6.586l2.293-2.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.414L9 10.586V4a1 1 0 011-1z" clipRule="evenodd" />
               </svg>
               Descargar Reporte de Movimientos
             </button>
