@@ -1,0 +1,5 @@
+{
+  "name": "Control de Inventario de Frutos",
+  "description": "Una aplicación web para gestionar el inventario de frutos tostados y engomados, registrando entradas, salidas y generando reportes.",
+  "requestFramePermissions": []
+}
