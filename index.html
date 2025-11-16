@@ -11,16 +11,44 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <!-- Babel para transpilar JSX en el navegador -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://aistudiocdn.com/react@^19.2.0",
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+        "react/": "https://aistudiocdn.com/react@^19.2.0/"
+      }
+    }
+    </script>
+    
+    <!-- FIREBASE SDKs (Compatibles con la versión React usada) -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    
+    <script>
+        // 2. CONFIGURACIÓN E INICIALIZACIÓN DE FIREBASE
+        // **!!! ASEGÚRATE DE REEMPLAZAR ESTO CON LOS DATOS DE TU CONSOLA DE FIREBASE !!!**
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY", // <-- REEMPLAZAR con tu clave
+            authDomain: "TU_AUTH_DOMAIN", // <-- REEMPLAZAR
+            projectId: "TU_PROJECT_ID", // <-- REEMPLAZAR
+            storageBucket: "...",
+            messagingSenderId: "...",
+            appId: "..."
+        };
+
+        // Inicializar Firebase y la Base de Datos Firestore
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = app.firestore();
+        
+        // Hacemos que la variable 'db' esté disponible globalmente
+        window.db = db;
+        
+        // Bloquear alert() en entorno de iFrame
+        window.alert = function(message) {
+            console.error("Alert bloqueada. Mensaje:", message);
+        };
+    </script>
 </head>
 <body class="bg-gray-100">
     <div id="root"></div>
@@ -48,7 +76,7 @@
         // --- COMPONENTES DE REACT ---
 
         // Componente: Formulario de Transacciones
-        const TransactionForm = ({ products, onAddTransaction, error }) => {
+        const TransactionForm = ({ products, onAddTransaction, error, loading }) => {
           const [productCode, setProductCode] = useState(products[0]?.code || '');
           const [movementType, setMovementType] = useState(MovementType.Entrada);
           const [quantity, setQuantity] = useState('');
@@ -73,6 +101,7 @@
             <div className="bg-white p-6 rounded-xl shadow-md">
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Registrar Movimiento</h2>
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                {/* Product Code Select */}
                 <div className="flex flex-col">
                   <label htmlFor="product-code" className="mb-2 font-semibold text-gray-600">Código de Producto</label>
                   <select
@@ -80,6 +109,7 @@
                     value={productCode}
                     onChange={(e) => setProductCode(e.target.value)}
                     className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    disabled={loading}
                   >
                     {products.map((p) => (
                       <option key={p.code} value={p.code}>
@@ -88,6 +118,7 @@
                     ))}
                   </select>
                 </div>
+                {/* Movement Type Select */}
                 <div className="flex flex-col">
                   <label htmlFor="movement-type" className="mb-2 font-semibold text-gray-600">Tipo de Movimiento</label>
                   <select
@@ -95,11 +126,13 @@
                     value={movementType}
                     onChange={(e) => setMovementType(e.target.value)}
                     className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    disabled={loading}
                   >
                     <option value={MovementType.Entrada}>Entrada</option>
                     <option value={MovementType.Salida}>Salida</option>
                   </select>
                 </div>
+                {/* Quantity Input */}
                 <div className="flex flex-col">
                   <label htmlFor="quantity" className="mb-2 font-semibold text-gray-600">Cantidad</label>
                   <input
@@ -110,13 +143,16 @@
                     placeholder="Ej: 50"
                     min="1"
                     className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    disabled={loading}
                   />
                 </div>
+                {/* Submit Button */}
                 <button
                   type="submit"
-                  className="w-full bg-blue-600 text-white font-bold p-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300 ease-in-out"
+                  className={`w-full font-bold p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition duration-300 ease-in-out ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500'}`}
+                  disabled={loading}
                 >
-                  Registrar
+                  {loading ? 'Procesando...' : 'Registrar'}
                 </button>
               </form>
               {error && <p className="text-red-500 mt-4 text-center md:text-left">{error}</p>}
@@ -125,30 +161,36 @@
         };
 
         // Componente: Tabla de Inventario
-        const InventoryTable = ({ products }) => {
+        const InventoryTable = ({ products, loading }) => {
           return (
-            <div className="bg-white p-6 rounded-xl shadow-md">
+            <div className="bg-white p-6 rounded-xl shadow-md min-h-[200px]">
               <h2 className="text-2xl font-bold text-gray-800 mb-4">Inventario Principal</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-gray-50 border-b-2 border-gray-200">
-                    <tr>
-                      <th className="p-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Código</th>
-                      <th className="p-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Descripción</th>
-                      <th className="p-4 text-sm font-semibold text-gray-600 uppercase tracking-wider text-right">Total (Stock)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {products.map((product) => (
-                      <tr key={product.code} className="hover:bg-gray-50">
-                        <td className="p-4 whitespace-nowrap font-mono text-gray-700">{product.code}</td>
-                        <td className="p-4 whitespace-nowrap text-gray-800">{product.description}</td>
-                        <td className="p-4 whitespace-nowrap font-bold text-lg text-right text-gray-900">{product.total}</td>
+              {loading ? (
+                  <div className="flex justify-center items-center h-full">
+                      <p className="text-gray-500">Cargando inventario desde Firebase...</p>
+                  </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-gray-50 border-b-2 border-gray-200">
+                      <tr>
+                        <th className="p-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Código</th>
+                        <th className="p-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Descripción</th>
+                        <th className="p-4 text-sm font-semibold text-gray-600 uppercase tracking-wider text-right">Total (Stock)</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {products.map((product) => (
+                        <tr key={product.code} className="hover:bg-gray-50">
+                          <td className="p-4 whitespace-nowrap font-mono text-gray-700">{product.code}</td>
+                          <td className="p-4 whitespace-nowrap text-gray-800">{product.description}</td>
+                          <td className="p-4 whitespace-nowrap font-bold text-lg text-right text-gray-900">{product.total}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           );
         };
@@ -202,40 +244,99 @@
 
         // Componente Principal: App
         const App = () => {
-          const loadStateFromStorage = () => {
-            try {
-              const storedProducts = localStorage.getItem('inventory_products');
-              const storedHistory = localStorage.getItem('inventory_history');
+          const [products, setProducts] = useState(INITIAL_PRODUCTS);
+          const [history, setHistory] = useState([]);
+          const [error, setError] = useState(null);
+          const [loading, setLoading] = useState(true); // Nuevo estado de carga
 
-              const products = storedProducts ? JSON.parse(storedProducts) : INITIAL_PRODUCTS;
-              const history = storedHistory ? JSON.parse(storedHistory) : [];
+          // --- FIREBASE: CARGAR DATOS AL INICIO (Reemplazo de loadStateFromStorage) ---
+          useEffect(() => {
+              const loadDataFromFirebase = async () => {
+                  if (!window.db) {
+                      setError("Error de inicialización de Firebase. Faltan credenciales.");
+                      setLoading(false);
+                      return;
+                  }
+                  
+                  try {
+                      // 1. Cargar Inventario (Stock)
+                      const stockRef = window.db.collection("inventario_stock").doc("stock_actual");
+                      const stockDoc = await stockRef.get();
 
-              if (!Array.isArray(products) || !Array.isArray(history)) {
-                  return { products: INITIAL_PRODUCTS, history: [] };
+                      if (stockDoc.exists && stockDoc.data().items) {
+                          setProducts(stockDoc.data().items);
+                      } else {
+                          // Si es la primera vez, guarda el stock inicial en Firebase
+                          await stockRef.set({ items: INITIAL_PRODUCTS, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                          setProducts(INITIAL_PRODUCTS);
+                      }
+
+                      // 2. Cargar Historial (Movimientos)
+                      const historySnapshot = await window.db.collection("historial_movimientos")
+                                                              .orderBy("timestamp", "desc") // Mostrar lo más nuevo arriba
+                                                              .get();
+
+                      const loadedHistory = historySnapshot.docs.map(doc => ({
+                          ...doc.data(),
+                          // Convertir el timestamp de Firebase a una cadena legible
+                          date: doc.data().timestamp ? new Date(doc.data().timestamp.toDate()).toLocaleString('es-ES') : new Date().toLocaleString('es-ES'),
+                      }));
+                      setHistory(loadedHistory);
+                      
+                  } catch (e) {
+                      console.error("Error al cargar datos de Firebase:", e);
+                      // Informamos al usuario que revise las reglas de seguridad
+                      setError("Error de Firebase: Permiso denegado. Revise las Reglas de Seguridad en su Consola de Firebase y publique 'match /{document=**} { allow read, write: if true; }'.");
+                      setProducts(INITIAL_PRODUCTS); // Fallback al inicial
+                  } finally {
+                      setLoading(false);
+                  }
+              };
+              
+              loadDataFromFirebase();
+
+          }, []); // Se ejecuta solo al montar
+
+          // --- FIREBASE: GUARDAR DATOS (Reemplazo de localStorage.setItem) ---
+          const saveInventoryAndHistory = async (newProducts, newTransaction) => {
+              if (!window.db) return;
+              
+              // 1. Guardar Inventario (Stock)
+              try {
+                  const stockRef = window.db.collection("inventario_stock").doc("stock_actual");
+                  await stockRef.update({ 
+                      items: newProducts,
+                      updatedAt: firebase.firestore.FieldValue.serverTimestamp() 
+                  });
+              } catch (e) {
+                  // Si falla la actualización (update), intentamos crear el documento (set) si no existe
+                  if (e.code === 'not-found') {
+                    const stockRef = window.db.collection("inventario_stock").doc("stock_actual");
+                    await stockRef.set({ items: newProducts, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                  } else {
+                    console.error("Error al guardar stock:", e);
+                    setError("Error al actualizar el stock en la base de datos. (Revise las Reglas de Seguridad)");
+                  }
               }
-              return { products, history };
 
-            } catch (e) {
-              console.error("Fallo al cargar desde localStorage", e);
-              return { products: INITIAL_PRODUCTS, history: [] };
-            }
+              // 2. Guardar Registro de Movimiento en el Historial
+              try {
+                  await window.db.collection("historial_movimientos").add({
+                      ...newTransaction,
+                      timestamp: firebase.firestore.FieldValue.serverTimestamp(), // Usar el timestamp del servidor
+                  });
+              } catch (e) {
+                  console.error("Error al guardar historial:", e);
+                  setError("Error al guardar el historial en la base de datos. (Revise las Reglas de Seguridad)");
+              }
           };
 
-          const [products, setProducts] = useState(() => loadStateFromStorage().products);
-          const [history, setHistory] = useState(() => loadStateFromStorage().history);
-          const [error, setError] = useState(null);
-
-          useEffect(() => {
-            try {
-              localStorage.setItem('inventory_products', JSON.stringify(products));
-              localStorage.setItem('inventory_history', JSON.stringify(history));
-            } catch (e) {
-              console.error("Fallo al guardar en localStorage", e);
-            }
-          }, [products, history]);
-          
-          const handleAddTransaction = useCallback((code, type, quantity) => {
+          const handleAddTransaction = useCallback(async (code, type, quantity) => {
             setError(null);
+            
+            // Si está cargando o no hay db, no procesar
+            if (loading || !window.db) return;
+
             const productIndex = products.findIndex(p => p.code === code);
             if (productIndex === -1) {
               setError(`Producto con código ${code} no encontrado.`);
@@ -260,7 +361,6 @@
             updatedProducts[productIndex] = product;
 
             const newTransaction = {
-              date: new Date().toLocaleString('es-ES'),
               code: product.code,
               description: product.description,
               type,
@@ -268,14 +368,24 @@
               resultingBalance: newTotal,
             };
 
+            // ACTUALIZA EL ESTADO LOCAL (INMEDIATO)
             setProducts(updatedProducts);
-            setHistory(prevHistory => [newTransaction, ...prevHistory]);
+            setHistory(prevHistory => [{ 
+                ...newTransaction, 
+                // Usar fecha local para la vista inmediata, el servidor usará su propio timestamp
+                date: new Date().toLocaleString('es-ES') 
+            }, ...prevHistory]); 
+            
+            // GUARDAR DATOS EN FIREBASE (PERSISTENTE)
+            await saveInventoryAndHistory(updatedProducts, newTransaction);
+            
 
-          }, [products]);
+          }, [products, loading]); // Dependencia de products, loading
 
           const downloadCSV = () => {
+            // Se eliminó alert() por cumplimiento de reglas
             if (history.length === 0) {
-              alert("No hay movimientos para generar un reporte.");
+              console.log("No hay movimientos para generar un reporte.");
               return;
             }
 
@@ -313,8 +423,8 @@
               </header>
 
               <main className="space-y-8">
-                <TransactionForm products={products} onAddTransaction={handleAddTransaction} error={error}/>
-                <InventoryTable products={products} />
+                <TransactionForm products={products} onAddTransaction={handleAddTransaction} error={error} loading={loading}/>
+                <InventoryTable products={products} loading={loading} />
                 
                 <div className="flex justify-center md:justify-end">
                     <button
@@ -322,7 +432,6 @@
                       className="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-300 ease-in-out flex items-center gap-2"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zM9 9a1 1 0 000 2h2a1 1 0 100-2H9z" clipRule="evenodd" />
                         <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L10 10.586l2.293-2.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
                       </svg>
                       Descargar Reporte de Movimientos
@@ -345,6 +454,5 @@
         root.render(<App />);
 
     </script>
-<script type="module" src="/index.tsx"></script>
 </body>
 </html>
