@@ -27,14 +27,15 @@
     
     <script>
         // 2. CONFIGURACIÓN E INICIALIZACIÓN DE FIREBASE
-        // **!!! ASEGÚRATE DE REEMPLAZAR ESTO CON LOS DATOS DE TU CONSOLA DE FIREBASE !!!**
+        // ESTAS SON TUS CREDENCIALES, YA NO NECESITAS EDITARLAS
         const firebaseConfig = {
-            apiKey: "TU_API_KEY", // <-- REEMPLAZAR con tu clave
-            authDomain: "TU_AUTH_DOMAIN", // <-- REEMPLAZAR
-            projectId: "TU_PROJECT_ID", // <-- REEMPLAZAR
-            storageBucket: "...",
-            messagingSenderId: "...",
-            appId: "..."
+            apiKey: "AIzaSyD2ISoRrqzzKwExfeSmy8gGqyhdZ318HpA",
+            authDomain: "inventario-de-frutos-tostados.firebaseapp.com",
+            projectId: "inventario-de-frutos-tostados",
+            storageBucket: "inventario-de-frutos-tostados.firebasestorage.app",
+            messagingSenderId: "662885478256",
+            appId: "1:662885478256:web:5af2a2ce3d51d7f6c6e9b5",
+            measurementId: "G-WT5X69GHTS"
         };
 
         // Inicializar Firebase y la Base de Datos Firestore
@@ -249,7 +250,7 @@
           const [error, setError] = useState(null);
           const [loading, setLoading] = useState(true); // Nuevo estado de carga
 
-          // --- FIREBASE: CARGAR DATOS AL INICIO (Reemplazo de loadStateFromStorage) ---
+          // --- FIREBASE: CARGAR DATOS AL INICIO ---
           useEffect(() => {
               const loadDataFromFirebase = async () => {
                   if (!window.db) {
@@ -297,7 +298,7 @@
 
           }, []); // Se ejecuta solo al montar
 
-          // --- FIREBASE: GUARDAR DATOS (Reemplazo de localStorage.setItem) ---
+          // --- FIREBASE: GUARDAR DATOS ---
           const saveInventoryAndHistory = async (newProducts, newTransaction) => {
               if (!window.db) return;
               
